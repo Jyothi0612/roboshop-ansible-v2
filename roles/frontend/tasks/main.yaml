@@ -1,5 +1,6 @@
 - name: enable nginx 1.26
   command: dnf module enable nginx:1.26 -y
+  changed_when: false
 
 - name: install nginx
   dnf:
@@ -50,3 +51,6 @@
     src: roboshop.conf.j2
     dest: /etc/nginx/default.d/roboshop.conf
   notify: restart nginx
+
+- name: restart nginx now if the config changed 
+  meta: flush_handlers
