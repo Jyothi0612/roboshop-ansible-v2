@@ -6,6 +6,10 @@
     name: nginx
     state: present
 
+- name: allow nginx to connect to backends (SELinux)
+  command: setsebool -P httpd_can_network_connect 1
+  changed_when: false
+
 - name: start and enable nginx
   service:
     name: nginx
