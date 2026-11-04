@@ -1,2 +1,2 @@
-dependencies:
-  - role: mysql-data
+# dependencies:
+#   - role: mysql-data

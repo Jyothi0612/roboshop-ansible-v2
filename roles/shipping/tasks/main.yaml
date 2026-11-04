@@ -13,6 +13,30 @@
     name: common
     tasks_from: systemd-setup.yaml
 
+- name: check cities data exists or not
+  command: mysql -h "{{ mysql_host }}" -uroot -p{{ mysql_root_password }} -N -B -e "SELECT COUNT(*) FROM cities.cities;"
+  register: cities_data_count
+  ignore_errors: true
+  tags:
+    - mysql
+
+- name: print cities data count
+  debug:
+    msg: "Cities data count: {{ cities_data_count }}"
+  tags:
+    - mysql
+
+- name: load cities data into mysql
+  shell: mysql -h "{{ mysql_host }}" -uroot -p{{ mysql_root_password }} < /app/db/master-data.sql
+  when: cities_data_count.rc != 0 or cities_data_count.stdout | int == 0
+  tags:
+    - mysql
+
+- name: create app user in mysql
+  shell: mysql -h "{{ mysql_host }}" -uroot -p{{ mysql_root_password }} < /app/db/app-user.sql
+  tags:
+    - mysql
+
 - name: restart shipping service
   include_role:
     name: common
