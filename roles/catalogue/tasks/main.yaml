@@ -1,0 +1,41 @@
+- name: application setup
+  include_role:
+    name: common
+    tasks_from: app-setup.yaml
+
+- name: nodejs setup
+  include_role:
+    name: common
+    tasks_from: nodejs.yaml
+
+- name: systemd setup
+  include_role:
+    name: common
+    tasks_from: systemd-setup.yaml
+
+- name: copy mongo repo
+  copy:
+    src: mongo.repo
+    dest: /etc/yum.repos.d/mongo.repo
+
+- name: install mongodb client
+  dnf:
+    name: mongodb-mongosh
+    state: present
+
+- name: check products loaded or not
+  command: mongosh --host "{{ mongodb_host }}" --quiet --eval 'db.getSiblingDB("catalogue").products.countDocuments()'
+  register: catalogue_products_count
+
+- name: print catalogue products count
+  debug:
+    msg: "Catalogue products count: {{ catalogue_products_count }}"
+
+- name: load catalogue products
+  shell: mongosh --host "{{ mongodb_host }}" < /app/db/master-data.js
+  when: catalogue_products_count.stdout | int == 0
+
+- name: restart catalogue service
+  include_role:
+    name: common
+    tasks_from: restart.yaml

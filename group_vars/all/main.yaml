@@ -3,3 +3,13 @@ ansible_password: "{{ vault_ansible_password }}"
 mysql_root_password: "{{ vault_mysql_root_password }}"
 rabbitmq_user: "{{ vault_rabbitmq_user }}"
 rabbitmq_password: "{{ vault_rabbitmq_password }}"
+
+mongodb_host: mongodb.agenticengg.online
+redis_host: redis.agenticengg.online
+mysql_host: mysql.agenticengg.online
+rabbitmq_host: rabbitmq.agenticengg.online
+catalogue_host: catalogue.agenticengg.online
+user_host: user.agenticengg.online
+cart_host: cart.agenticengg.online
+shipping_host: shipping.agenticengg.online
+payment_host: payment.agenticengg.online
