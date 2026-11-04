@@ -1,0 +1,31 @@
+- name: enable maven3.9
+  command: dnf module enable maven:3.9 -y
+
+- name: install maven and java-25
+  dnf:
+    name:
+      - maven
+      - java-25-openjdk-devel
+      - maven-openjdk25
+      - mysql
+    state: present
+
+- name: build {{ component }} application
+  command: mvn clean package
+  args:
+    chdir: /app
+
+- name: move {{ component }} jar to {{ component }}.jar
+  command: mv target/{{ component }}.jar {{ component }}.jar
+  args:
+    chdir: /app  
+
+- name: mvn version without JAVA_HOME
+  command: mvn --version
+  args:
+    chdir: /app
+  register: mvn_default
+
+- name: print mvn version without JAVA_HOME
+  debug:
+    msg: "{{ mvn_default.stdout_lines }}"

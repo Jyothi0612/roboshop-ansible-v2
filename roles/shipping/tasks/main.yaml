@@ -1,0 +1,19 @@
+- name: application setup
+  include_role:
+    name: common
+    tasks_from: app-setup.yaml
+
+- name: java setup
+  include_role:
+    name: common
+    tasks_from: java.yaml
+
+- name: systemd setup
+  include_role:
+    name: common
+    tasks_from: systemd-setup.yaml
+
+- name: restart shipping service
+  include_role:
+    name: common
+    tasks_from: restart.yaml
