@@ -1,0 +1,40 @@
+- name: enable mysql 8.4
+  command: dnf module enable mysql:8.4 -y
+
+- name: install mysql server
+  package:
+    name: mysql-server
+    state: present
+
+- name: enable and start mysql
+  service:
+    name: mysqld
+    state: started
+    enabled: yes
+
+- name: install PyMySQL for the mysql modules
+  package:
+    name: python3-PyMySQL
+    state: present
+
+- name: setup mysql root password
+  community.mysql.mysql_user:
+    name: root
+    host: localhost
+    plugin: caching_sha2_password
+    plugin_auth_string: "{{ mysql_root_password }}"
+    check_implicit_admin: true
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    state: present
+    
+- name: allow root from other servers (shipping loads the data remotely)
+  community.mysql.mysql_user:
+    name: root
+    host: "%"
+    plugin: caching_sha2_password
+    plugin_auth_string: "{{ mysql_root_password }}"
+    priv: "*.*:ALL,GRANT"
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    state: present
