@@ -1,2 +1,2 @@
-ansible_user: ec2-user
-ansible_password: DevOps321
+ansible_user: "{{ vault_ansible_user }}"
+ansible_password: "{{ vault_ansible_password }}"
