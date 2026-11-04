@@ -1,0 +1,91 @@
+- name: create ec2 instances and route53 records
+  hosts: local
+  connection: local
+  vars:
+    instances: ["mongodb", "redis", "mysql", "rabbitmq", "catalogue", "user", "cart", "shipping", "payment", "frontend"]
+    action: "create"
+    domain_name: "agenticengg.online"
+    ami_id: "ami-0b3624e0b2e05fafb"
+    instance_type: "t3.micro"
+    hosted_zone_id: "Z07565232HGHLQQMLYZIX"   # private zone: internal names like mongodb.agenticengg.online
+    public_zone_id: "Z0191431ICNDXLGEQZCB"    # public zone: agenticengg.online for browsers
+  tasks:
+  - name: create ec2 instance
+    amazon.aws.ec2_instance:
+      name: "roboshop-{{ item }}"
+      image_id: "{{ ami_id }}"
+      instance_type: "{{ instance_type }}"
+      security_groups:
+      - roboshop-common
+      - "roboshop-{{ item }}"
+      region: eu-north-1
+      wait: true
+      user_data: "{{ lookup('file', '/home/ec2-user/lab-user-data.yaml') }}"
+    loop: "{{ instances }}"
+    when: action == "create"
+    register: ec2_output
+
+  # - name: print ec2 creation output
+  #   debug:
+  #     msg: "{{ ec2_output }}" 
+
+  - name: create route53 record
+    amazon.aws.route53:
+      state: present
+      zone: "{{ domain_name }}"
+      hosted_zone_id: "{{ hosted_zone_id }}"
+      type: A
+      ttl: 1
+      value: "{{ item.instances[0].private_ip_address }}"
+      record: "{{ item.item  }}.{{ domain_name }}"
+      overwrite: true
+      private_zone: true
+    loop: "{{ ec2_output.results }}"
+    when: action == "create"
+
+  - name: create route53 record for frontend
+    amazon.aws.route53:
+      state: present
+      zone: "{{ domain_name }}"
+      hosted_zone_id: "{{ public_zone_id }}"
+      type: A
+      ttl: 1
+      value: "{{ item.instances[0].public_ip_address }}"
+      record: "{{ domain_name }}"
+      overwrite: true
+      private_zone: false
+    loop: "{{ ec2_output.results }}"
+    when: action == "create" and item.item == "frontend"
+
+  - name: delete route 53 records
+    amazon.aws.route53:
+      state: absent
+      zone: "{{ domain_name }}"
+      hosted_zone_id: "{{ hosted_zone_id }}"
+      type: A
+      record: "{{ item }}.{{ domain_name }}"
+      ttl: 1
+      private_zone: true
+    loop: "{{ instances }}"
+    when: action == "delete"
+
+  - name: delete route 53 record for frontend
+    amazon.aws.route53:
+      state: absent
+      zone: "{{ domain_name }}"
+      hosted_zone_id: "{{ public_zone_id }}"
+      type: A
+      record: "{{ domain_name }}"
+      ttl: 1
+      private_zone: false
+    loop: "{{ instances }}"
+    when: action == "delete" and item == "frontend"   # plain list here, so item (not item.item)
+
+  - name: delete ec2 instances
+    amazon.aws.ec2_instance:
+      state: absent
+      name: "roboshop-{{ item }}"
+      region: eu-north-1
+      wait: false
+    loop: "{{ instances }}"
+    when: action == "delete"

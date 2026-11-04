@@ -1,0 +1,107 @@
+---
+- name: Create RoboShop security groups
+  hosts: local
+  connection: local
+  gather_facts: false
+  vars:
+    region: eu-north-1
+    # Default VPC in the Stockholm account. Override with -e vpc_id=... for another VPC.
+    vpc_id: vpc-09dc55d870bfce035
+    # roboshop-common already exists and is managed separately.
+    rabbitmq_management_enabled: false
+    service_groups:
+      mongodb:
+        - proto: tcp
+          ports: [27017]
+          group_name: [roboshop-catalogue, roboshop-user]
+      redis:
+        - proto: tcp
+          ports: [6379]
+          group_name: [roboshop-user, roboshop-cart]
+      mysql:
+        - proto: tcp
+          ports: [3306]
+          group_name: [roboshop-shipping]
+      rabbitmq:
+        - proto: tcp
+          ports: [5672]
+          group_name: [roboshop-payment, roboshop-dispatch]
+      catalogue:
+        - proto: tcp
+          ports: [8080]
+          group_name: [roboshop-frontend, roboshop-cart]
+      user:
+        - proto: tcp
+          ports: [8080]
+          group_name: [roboshop-frontend, roboshop-payment]
+      cart:
+        - proto: tcp
+          ports: [8080]
+          group_name: [roboshop-frontend, roboshop-shipping, roboshop-payment]
+      shipping:
+        - proto: tcp
+          ports: [8080]
+          group_name: [roboshop-frontend]
+      payment:
+        - proto: tcp
+          ports: [8080]
+          group_name: [roboshop-frontend]
+      dispatch: []
+      frontend:
+        - proto: tcp
+          ports: [80]
+          cidr_ip: 0.0.0.0/0
+    management_rules:
+      - proto: tcp
+        ports: [15672]
+        cidr_ip: "{{ admin_cidr }}"
+
+  tasks:
+    - name: Require the target VPC
+      ansible.builtin.assert:
+        that:
+          - vpc_id is defined
+          - vpc_id | default('') is match('^vpc-[0-9a-f]+$')
+        fail_msg: Supply vpc_id for the VPC containing roboshop-common.
+
+    - name: Require an allowed IP when RabbitMQ management is enabled
+      ansible.builtin.assert:
+        that:
+          - admin_cidr is defined
+          - admin_cidr | default('') is match('^([0-9]{1,3}\.){3}[0-9]{1,3}/32$')
+        fail_msg: Supply admin_cidr as your IPv4 address with /32 (for RabbitMQ management on 15672).
+      when: rabbitmq_management_enabled | bool
+
+    # Create every group first so references work regardless of loop order.
+    # Preserve existing rules during this pass to avoid disruption on reruns.
+    - name: Ensure all eleven service groups exist
+      amazon.aws.ec2_security_group:
+        name: "roboshop-{{ item.key }}"
+        description: "RoboShop {{ item.key }} access"
+        vpc_id: "{{ vpc_id }}"
+        region: "{{ region }}"
+        state: present
+        purge_rules: false
+        purge_rules_egress: false
+      loop: "{{ service_groups | dict2items }}"
+      loop_control:
+        label: "roboshop-{{ item.key }}"
+
+    - name: Configure service rules from the RoboShop README
+      amazon.aws.ec2_security_group:
+        name: "roboshop-{{ item.key }}"
+        description: "RoboShop {{ item.key }} access"
+        vpc_id: "{{ vpc_id }}"
+        region: "{{ region }}"
+        state: present
+        purge_rules: true
+        rules: >-
+          {{ item.value + (management_rules
+             if item.key == 'rabbitmq' and rabbitmq_management_enabled | bool
+             else []) }}
+        rules_egress:
+          - proto: all
+            cidr_ip: 0.0.0.0/0
+      loop: "{{ service_groups | dict2items }}"
+      loop_control:
+        label: "roboshop-{{ item.key }}"
