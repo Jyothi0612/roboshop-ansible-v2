@@ -1,0 +1,19 @@
+- name: application setup
+  include_role:
+    name: common
+    tasks_from: app-setup.yaml
+
+- name: python setup
+  include_role:
+    name: common
+    tasks_from: python.yaml
+
+- name: systemd setup
+  include_role:
+    name: common
+    tasks_from: systemd-setup.yaml
+
+- name: restart payment service
+  include_role:
+    name: common
+    tasks_from: restart.yaml

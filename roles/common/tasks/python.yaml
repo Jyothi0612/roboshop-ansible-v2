@@ -1,0 +1,22 @@
+- name: install python3.14
+  dnf:
+    name:
+      - python3.14
+      - python3.14-pip
+    state: present
+
+- name: install dependencies
+  pip:
+    requirements: /app/requirements.txt
+    virtualenv: /app/.venv
+    virtualenv_command: python3.14 -m venv
+
+- name: install SELinux tools
+  dnf:
+    name: policycoreutils-python-utils
+    state: present
+
+- name: label venv binaries so systemd can run them (SELinux)
+  shell: |
+    semanage fcontext -a -t bin_t "/app/.venv/bin(/.*)?" 2>/dev/null || true
+    restorecon -Rv /app/.venv/bin
