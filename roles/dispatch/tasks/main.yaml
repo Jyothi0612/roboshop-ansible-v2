@@ -1,0 +1,29 @@
+- name: install go
+  dnf:
+    name: golang
+    state: present
+
+- name: application setup
+  include_role:
+    name: common
+    tasks_from: app-setup
+
+- name: build dispatch
+  command: go build -o dispatch .
+  args:
+    chdir: /app
+
+- name: label the binary so systemd can run it (SELinux)
+  shell: |
+    semanage fcontext -a -t bin_t "/app/dispatch" 2>/dev/null || true
+    restorecon -v /app/dispatch
+
+- name: systemd setup
+  include_role:
+    name: common
+    tasks_from: systemd-setup
+
+- name: start dispatch
+  include_role:
+    name: common
+    tasks_from: restart

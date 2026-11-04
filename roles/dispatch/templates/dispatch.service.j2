@@ -1,0 +1,16 @@
+[Unit]
+Description=Dispatch Service
+After=network-online.target
+
+[Service]
+User=roboshop
+Environment=AMQP_HOST="{{ rabbitmq_host }}"
+Environment=AMQP_USER="{{ rabbitmq_user }}"
+Environment=AMQP_PASS="{{ rabbitmq_password }}"
+ExecStart=/app/dispatch
+SyslogIdentifier=dispatch
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
